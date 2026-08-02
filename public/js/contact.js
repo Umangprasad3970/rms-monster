@@ -53,17 +53,17 @@
       msg.className = 'form-msg';
 
       try {
-        const res = await fetch('/api/contact', {
+        const res = await fetch('https://formspree.io/f/xgogjjpz', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
         });
-        const data = await res.json();
-
-        if (res.ok && data.success) {
+        if (res.ok) {
           window.location.href = '/thank-you.html';
           return;
         }
+        let data = {};
+        try { data = await res.json(); } catch (e) {}
         showMsg(msg, data.error || 'Something went wrong. Please try again or call us directly.', 'err');
       } catch (err) {
         showMsg(msg, 'Network error — please check your connection and try again.', 'err');
