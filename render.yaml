@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: rms-monster
+    env: node
+    branch: main
+    buildCommand: "npm install"
+    startCommand: "npm start"
+    plan: starter
+    envVars:
+      - key: ADMIN_KEY
+        value: "" # set this in Render dashboard to enable /api/leads
