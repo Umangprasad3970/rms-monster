@@ -1,0 +1,15 @@
+{
+  "name": "neoserve-projects-website",
+  "version": "1.0.0",
+  "description": "Neoserve Projects marketing website with contact form, SQLite-backed lead storage, and admin viewer. Zero external dependencies.",
+  "main": "server.js",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "license": "UNLICENSED",
+  "private": true
+}
