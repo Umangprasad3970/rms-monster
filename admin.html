@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Leads Admin | Neoserve Projects</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 40 40%22><rect x=%221%22 y=%221%22 width=%2238%22 height=%2238%22 rx=%222%22 transform=%22rotate(45 20 20)%22 fill=%22%230B1210%22/><circle cx=%2220%22 cy=%2220%22 r=%223%22 fill=%22%23159A57%22/></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/style.css">
+<style>
+  .admin-wrap{ max-width:1100px; margin:0 auto; padding:56px 28px; }
+  .key-card{ max-width:420px; margin:80px auto; }
+</style>
+</head>
+<body class="blueprint">
+
+<div id="site-header"></div>
+
+<main>
+  <div id="gate" class="key-card form-card">
+    <span class="eyebrow">Restricted</span>
+    <h2 class="mt-16" style="font-size:22px;">Enter admin key</h2>
+    <p class="muted mt-16" style="font-size:13.5px;">This key is set as the <code>ADMIN_KEY</code> environment variable on the server. It is required to view submitted project leads.</p>
+    <div class="field mt-24">
+      <label for="adminKey">Admin key</label>
+      <input type="password" id="adminKey" autocomplete="off">
+    </div>
+    <button class="btn btn-primary" id="loadBtn">View leads <span class="btn-arrow">&rarr;</span></button>
+    <div id="gateMsg" class="form-msg"></div>
+  </div>
+
+  <div id="results" class="admin-wrap" style="display:none;">
+    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px;">
+      <div>
+        <span class="eyebrow">Project Leads</span>
+        <h1 class="mt-16" style="font-size:28px;">Contact form submissions</h1>
+      </div>
+      <button class="btn btn-outline" id="refreshBtn">Refresh</button>
+    </div>
+    <div style="overflow-x:auto; margin-top:32px; border:1px solid var(--line);">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>Received</th>
+            <th>Name</th>
+            <th>Contact</th>
+            <th>Company</th>
+            <th>Service</th>
+            <th>Location</th>
+            <th>Message</th>
+          </tr>
+        </thead>
+        <tbody id="leadsBody"></tbody>
+      </table>
+    </div>
+    <p class="muted mt-24" id="emptyState" style="display:none;">No submissions yet.</p>
+  </div>
+</main>
+
+<div id="site-footer"></div>
+
+<script src="/js/main.js"></script>
+<script src="/js/admin.js"></script>
+</body>
+</html>
