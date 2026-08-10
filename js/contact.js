@@ -184,13 +184,16 @@
         // Successful submission
         // ------------------------------------------------
 
-        if (res.ok && data.success) {
+        if (data.success === true) {
 
-          window.location.href = '/thank-you.html';
-
-          return;
+            // Stop loading state before redirect
+            setLoading(btn, false);
+        
+            // Redirect to thank-you page
+            window.location.assign('/thank-you.html');
+        
+            return;
         }
-
 
         // ------------------------------------------------
         // API returned an error
