@@ -154,7 +154,7 @@
         // ------------------------------------------------
 
         const res = await fetch(
-          'https://rms-monster-api.onrender.com//api/contact',
+          'https://rms-monster-api.onrender.com/api/contact',
           {
             method: 'POST',
 
