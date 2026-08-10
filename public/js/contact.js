@@ -53,7 +53,7 @@
       msg.className = 'form-msg';
 
       try {
-        const res = await fetch('https://formspree.io/f/xgogjjpz', {
+        const res = await fetch('https://rms-monster-api.onrender.com/api/contact', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
