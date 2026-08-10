@@ -58,10 +58,16 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
         });
-        if (res.ok) {
-          window.location.href = '/thank-you.html';
-          return;
-        }
+        if (data.success === true) {
+         
+             // Stop loading state before redirect
+             setLoading(btn, false);
+         
+             // Redirect to thank-you page
+             window.location.assign('/thank-you.html');
+         
+             return;
+         }
         let data = {};
         try { data = await res.json(); } catch (e) {}
         showMsg(msg, data.error || 'Something went wrong. Please try again or call us directly.', 'err');
