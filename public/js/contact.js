@@ -1,12 +1,14 @@
 /**
  * Neoserve Projects — Contact Form Submission
  * 
- * Connected directly to Aiven MySQL database via /api/v1/leads
+ * Connected directly to Aiven MySQL database via /api/v1/leads and /api/contact
  * Generates RFC4122 Idempotency-Key and creates automated 24-hr SLA review tasks.
  */
 
 (function () {
   'use strict';
+
+  const REMOTE_API = 'https://rms-monster-api.onrender.com';
 
   function showMsg(el, text, kind) {
     el.textContent = text;
@@ -50,30 +52,58 @@
       const honeypotField = form.querySelector('#website');
       const honeypot = honeypotField ? honeypotField.value.trim() : '';
 
+      const fullName = (form.fullName ? form.fullName.value : (form.name ? form.name.value : '')).trim();
+      const email = form.email.value.trim();
+      const phone = form.phone.value.trim();
+      const company = form.company ? form.company.value.trim() : '';
+      const projectType = form.projectType ? form.projectType.value : (form.project_type ? form.project_type.value : 'Clean Energy EPC');
+      const location = form.location ? form.location.value.trim() : '';
+      const message = form.message.value.trim();
+
+      if (!fullName || !email || !phone || !message) {
+        showMsg(msg, 'Please fill in all required fields (Name, Email, Phone, Scope).', 'err');
+        return;
+      }
+
       const payload = {
-        fullName: form.fullName.value.trim(),
-        email: form.email.value.trim(),
-        phone: form.phone.value.trim(),
-        company: form.company ? form.company.value.trim() : '',
-        projectType: form.projectType.value,
-        location: form.location ? form.location.value.trim() : '',
-        message: form.message.value.trim(),
+        fullName: fullName,
+        name: fullName,
+        full_name: fullName,
+        email: email,
+        phone: phone,
+        company: company,
+        projectType: projectType,
+        project_type: projectType,
+        service: projectType,
+        serviceId: projectType,
+        location: location,
+        message: message,
         source: 'website_contact_form',
         website: honeypot
       };
-
-      if (!payload.fullName || !payload.email || !payload.phone || !payload.projectType || !payload.message) {
-        showMsg(msg, 'Please fill in all required fields.', 'err');
-        return;
-      }
 
       setLoading(btn, true);
       msg.className = 'form-msg';
 
       const idempotencyKey = generateUUID();
 
-      // Try local server first (/api/v1/leads -> Aiven MySQL), then fallback to /api/contact
-      const endpoints = ['/api/v1/leads', '/api/contact', 'https://rms-monster-api.onrender.com/api/v1/leads'];
+      // Determine endpoints order: on static domains like rms.monster, call Render API first
+      const isStaticHost = window.location.hostname.includes('rms.monster') || 
+                           window.location.hostname.includes('github.io') ||
+                           window.location.protocol === 'file:';
+
+      const endpoints = isStaticHost ? [
+        `${REMOTE_API}/api/v1/leads`,
+        `${REMOTE_API}/api/contact`,
+        '/api/v1/leads',
+        '/api/contact'
+      ] : [
+        '/api/v1/leads',
+        '/api/contact',
+        `${REMOTE_API}/api/v1/leads`,
+        `${REMOTE_API}/api/contact`
+      ];
+
       let submitted = false;
 
       for (const endpoint of endpoints) {
@@ -95,13 +125,13 @@
             data = {};
           }
 
-          if (res.ok && data.success === true) {
+          if (res.ok && (data.success === true || data.contact_id || data.contactId || data.leadId || data.status === 'NEW')) {
             submitted = true;
             window.location.assign('/thank-you.html');
             return;
           }
 
-          if (res.status === 400 || res.status === 429) {
+          if (res.status === 400 || res.status === 422 || res.status === 429) {
             showMsg(msg, data.error || data.message || 'Validation error. Please verify your details.', 'err');
             submitted = true;
             break;

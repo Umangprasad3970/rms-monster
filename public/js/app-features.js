@@ -515,19 +515,38 @@
         submitBtn.disabled = true;
         submitBtn.textContent = 'Scheduling…';
 
-        const endpoints = ['/api/v1/consultation/schedule', REMOTE_API + '/api/v1/consultation/schedule'];
+        const endpoints = [
+          REMOTE_API + '/api/v1/consultation/schedule',
+          REMOTE_API + '/api/consultations',
+          REMOTE_API + '/api/consultation',
+          REMOTE_API + '/api/contact',
+          '/api/v1/consultation/schedule',
+          '/api/contact'
+        ];
         let success = false;
 
         for (const ep of endpoints) {
           try {
+            const postBody = ep.includes('/contact') ? {
+              name: payload.name,
+              fullName: payload.name,
+              email: payload.email,
+              phone: payload.phone,
+              company: payload.organization,
+              project_type: 'Technical Site Audit: ' + payload.topic,
+              projectType: 'Technical Site Audit: ' + payload.topic,
+              message: `Site Audit Booking Request. Date: ${payload.preferred_date || 'Flexible'}, Location: ${payload.location || 'Site'}, Focus: ${payload.topic}`,
+              source: 'website_audit_modal'
+            } : payload;
+
             const res = await fetch(ep, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(payload)
+              body: JSON.stringify(postBody)
             });
             const data = await res.json();
-            if (res.ok && data.success) {
-              msgEl.textContent = `✓ ${data.message}`;
+            if (res.ok && (data.success || data.consultationId || data.contact_id || data.bookingReference)) {
+              msgEl.textContent = `✓ ${data.message || 'Audit consultation scheduled successfully.'}`;
               msgEl.className = 'form-msg show ok';
               auditForm.reset();
               success = true;
@@ -575,19 +594,38 @@
         submitBtn.disabled = true;
         submitBtn.textContent = 'Submitting RFQ…';
 
-        const endpoints = ['/api/v1/quotes', REMOTE_API + '/api/v1/quotes'];
+        const endpoints = [
+          REMOTE_API + '/api/v1/quotes',
+          REMOTE_API + '/api/quotes',
+          REMOTE_API + '/api/quote',
+          REMOTE_API + '/api/contact',
+          '/api/v1/quotes',
+          '/api/contact'
+        ];
         let success = false;
 
         for (const ep of endpoints) {
           try {
+            const postBody = ep.includes('/contact') ? {
+              name: payload.contact_person,
+              fullName: payload.contact_person,
+              email: payload.email,
+              phone: payload.phone,
+              company: payload.company_name,
+              project_type: 'RFQ Proposal: ' + payload.service_type,
+              projectType: 'RFQ Proposal: ' + payload.service_type,
+              message: `Commercial RFQ Proposal. Capacity: ${payload.capacity_mw || '100 kW'}, Location: ${payload.location || 'Site'}, Scope: ${payload.project_details}`,
+              source: 'website_rfq_modal'
+            } : payload;
+
             const res = await fetch(ep, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(payload)
+              body: JSON.stringify(postBody)
             });
             const data = await res.json();
-            if (res.ok && data.success) {
-              msgEl.textContent = `✓ ${data.message}`;
+            if (res.ok && (data.success || data.quoteId || data.quoteNumber || data.contact_id)) {
+              msgEl.textContent = `✓ ${data.message || 'Commercial RFQ submitted successfully.'}`;
               msgEl.className = 'form-msg show ok';
               rfqForm.reset();
               success = true;
