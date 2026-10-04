@@ -11,5 +11,8 @@
     "dev": "node --watch server.js"
   },
   "license": "UNLICENSED",
-  "private": true
+  "private": true,
+  "dependencies": {
+    "mysql2": "^3.24.5"
+  }
 }

@@ -1,11 +1,12 @@
-/*
- * Neoserve Projects — contact form submission
- * Posts to the Flask API /api/contact hosted on Render.
- * The Flask API validates the payload and stores the submission
- * in the Supabase PostgreSQL database.
+/**
+ * Neoserve Projects — Contact Form Submission
+ * 
+ * Connected directly to Aiven MySQL database via /api/v1/leads
+ * Generates RFC4122 Idempotency-Key and creates automated 24-hr SLA review tasks.
  */
 
 (function () {
+  'use strict';
 
   function showMsg(el, text, kind) {
     el.textContent = text;
@@ -15,229 +16,106 @@
   function setLoading(btn, loading) {
     btn.disabled = loading;
     btn.style.opacity = loading ? '0.65' : '1';
-    btn.textContent = loading ? 'Sending…' : 'Send message';
 
-    if (!loading) {
+    if (loading) {
+      btn.textContent = 'Submitting Enquiry…';
+    } else {
+      btn.textContent = 'Send message';
       const arrow = document.createElement('span');
       arrow.className = 'btn-arrow';
-      arrow.innerHTML = '→';
-
-      btn.appendChild(document.createTextNode(' '));
+      arrow.innerHTML = ' &rarr;';
       btn.appendChild(arrow);
     }
   }
 
+  function generateUUID() {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+      const r = (Math.random() * 16) | 0;
+      const v = c === 'x' ? r : (r & 0x3) | 0x8;
+      return v.toString(16);
+    });
+  }
+
   document.addEventListener('DOMContentLoaded', function () {
-
     const form = document.getElementById('contactForm');
-
     if (!form) return;
 
     const msg = document.getElementById('formMsg');
     const btn = document.getElementById('submitBtn');
 
-
     form.addEventListener('submit', async function (e) {
-
       e.preventDefault();
 
-
-      // --------------------------------------------------
       // Honeypot check
-      // --------------------------------------------------
-
       const honeypotField = form.querySelector('#website');
-
-      const honeypot = honeypotField
-        ? honeypotField.value.trim()
-        : '';
-
-
-      // --------------------------------------------------
-      // Get form values
-      // --------------------------------------------------
-
-      const fullName = form.fullName.value.trim();
-
-      const email = form.email.value.trim();
-
-      const phone = form.phone.value.trim();
-
-      const company = form.company.value.trim();
-
-      const projectType = form.projectType.value;
-
-      const location = form.location.value.trim();
-
-      const message = form.message.value.trim();
-
-
-      // --------------------------------------------------
-      // Client-side validation
-      // --------------------------------------------------
-
-      if (
-        !fullName ||
-        !email ||
-        !phone ||
-        !projectType ||
-        !message
-      ) {
-
-        showMsg(
-          msg,
-          'Please fill in all required fields.',
-          'err'
-        );
-
-        return;
-      }
-
-
-      // --------------------------------------------------
-      // Honeypot protection
-      //
-      // If a bot fills the hidden website field,
-      // pretend the submission was successful.
-      // --------------------------------------------------
-
-      if (honeypot) {
-
-        window.location.href = '/thank-you.html';
-
-        return;
-      }
-
-
-      // --------------------------------------------------
-      // Payload for Flask API
-      //
-      // Existing HTML field names are mapped to the
-      // names expected by the Flask backend.
-      // --------------------------------------------------
+      const honeypot = honeypotField ? honeypotField.value.trim() : '';
 
       const payload = {
-
-        name: fullName,
-
-        email: email,
-
-        phone: phone,
-
-        company: company,
-
-        project_type: projectType,
-
-        message: message,
-
-        // Sent for future backend support.
-        // Your current database/API can ignore this field.
-        location: location
-
+        fullName: form.fullName.value.trim(),
+        email: form.email.value.trim(),
+        phone: form.phone.value.trim(),
+        company: form.company ? form.company.value.trim() : '',
+        projectType: form.projectType.value,
+        location: form.location ? form.location.value.trim() : '',
+        message: form.message.value.trim(),
+        source: 'website_contact_form',
+        website: honeypot
       };
 
-
-      // --------------------------------------------------
-      // Start loading state
-      // --------------------------------------------------
-
-      setLoading(btn, true);
-
-      msg.className = 'form-msg';
-
-
-      try {
-
-        // ------------------------------------------------
-        // IMPORTANT:
-        // Replace this URL with your actual Render URL.
-        // ------------------------------------------------
-
-        const res = await fetch(
-          'https://rms-monster-api.onrender.com/api/contact',
-          {
-            method: 'POST',
-
-            headers: {
-              'Content-Type': 'application/json'
-            },
-
-            body: JSON.stringify(payload)
-          }
-        );
-
-
-        // ------------------------------------------------
-        // Read API response
-        // ------------------------------------------------
-
-        let data = {};
-
-        try {
-          data = await res.json();
-        } catch (jsonError) {
-          data = {};
-        }
-
-
-        // ------------------------------------------------
-        // Successful submission
-        // ------------------------------------------------
-
-        if (data.success === true) {
-
-            // Stop loading state before redirect
-            setLoading(btn, false);
-        
-            // Redirect to thank-you page
-            window.location.assign('/thank-you.html');
-        
-            return;
-        }
-
-        // ------------------------------------------------
-        // API returned an error
-        // ------------------------------------------------
-
-        showMsg(
-          msg,
-          data.message ||
-          data.error ||
-          'Something went wrong. Please try again or call us directly.',
-          'err'
-        );
-
-
-      } catch (err) {
-
-        // ------------------------------------------------
-        // Network/API connection error
-        // ------------------------------------------------
-
-        console.error(
-          'Contact API error:',
-          err
-        );
-
-        showMsg(
-          msg,
-          'Network error — please check your connection and try again.',
-          'err'
-        );
-
-      } finally {
-
-        // ------------------------------------------------
-        // Restore button
-        // ------------------------------------------------
-
-        setLoading(btn, false);
-
+      if (!payload.fullName || !payload.email || !payload.phone || !payload.projectType || !payload.message) {
+        showMsg(msg, 'Please fill in all required fields.', 'err');
+        return;
       }
 
+      setLoading(btn, true);
+      msg.className = 'form-msg';
+
+      const idempotencyKey = generateUUID();
+
+      // Try local server first (/api/v1/leads -> Aiven MySQL), then fallback to /api/contact
+      const endpoints = ['/api/v1/leads', '/api/contact', 'https://rms-monster-api.onrender.com/api/v1/leads'];
+      let submitted = false;
+
+      for (const endpoint of endpoints) {
+        try {
+          const res = await fetch(endpoint, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Idempotency-Key': idempotencyKey,
+              'Accept': 'application/json'
+            },
+            body: JSON.stringify(payload)
+          });
+
+          let data = {};
+          try {
+            data = await res.json();
+          } catch (e) {
+            data = {};
+          }
+
+          if (res.ok && data.success === true) {
+            submitted = true;
+            window.location.assign('/thank-you.html');
+            return;
+          }
+
+          if (res.status === 400 || res.status === 429) {
+            showMsg(msg, data.error || data.message || 'Validation error. Please verify your details.', 'err');
+            submitted = true;
+            break;
+          }
+        } catch (netErr) {
+          console.warn(`Attempt at ${endpoint} failed, trying next...`);
+        }
+      }
+
+      if (!submitted) {
+        showMsg(msg, 'Could not connect to server. Please call Dinesh Ahirwar directly at +91 63756 96762.', 'err');
+      }
+
+      setLoading(btn, false);
     });
-
   });
-
 })();
-```

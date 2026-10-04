@@ -1,27 +1,51 @@
-# Deploying `rms-monster` to a Node host (Render example)
+# Deploying Neoserve Projects Website to Render
 
-This repository contains a Node web server (`server.js`) and static files in `public/`.
+This repository contains the complete Neoserve Projects enterprise website and API gateway, fully integrated with **Aiven Cloud MySQL (`neoserve_db`)** and sharing the exact same data, models, and brochure portfolio as the Android Mobile Application.
 
-I prepared two files to help deploy:
-- `Dockerfile` — container image that runs `node server.js` on port 3000.
-- `render.yaml` — Render service descriptor to import the app easily.
+---
 
-Quick Render deployment steps:
+## 1. Environment Variables for Render
 
-1. Create a Render account and connect your GitHub repository.
-2. In Render, choose "New" → "Web Service" and import this repository (or use `render.yaml`).
-   - If importing manually, set:
-     - Environment: `Node`
-     - Branch: `main`
-     - Build command: `npm install`
-     - Start command: `npm start`
-3. Set the environment variable `ADMIN_KEY` in Render (optional, necessary for `/api/leads`).
-4. After the service is live, add a Custom Domain `rms.monster` in the Render dashboard.
-   - Render will display DNS targets to add to your domain registrar.
-   - For the apex domain (`rms.monster`) you may need an A/ALIAS record; for `www` add a CNAME to the target Render provides.
-5. Remove or update any existing GitHub Pages custom domain settings for this repo (in GitHub repo Settings → Pages) to avoid conflicts.
+When setting up your Web Service on Render (or Railway / VPS), configure these environment variables under **Environment**:
 
-DNS notes:
-- Currently the domain is served by GitHub Pages. Once you configure the Render service and add the custom domain there, Render will give you the exact DNS records to create. Replace the GitHub Pages records with the records Render requests.
+| Variable | Recommended / Live Value | Description |
+| :--- | :--- | :--- |
+| `NODE_ENV` | `production` | Production Node runtime flag |
+| `PORT` | `3000` | Port for the Node HTTP server |
+| `ADMIN_KEY` | `NeoserveAdmin2026SecureKey` | Secret key for `/admin.html` access |
+| `MYSQL_HOST` | `rms-db-umangprasad3970-a391.g.aivencloud.com` | Aiven Cloud MySQL Host |
+| `MYSQL_PORT` | `10469` | Aiven MySQL Port |
+| `MYSQL_USER` | `avnadmin` | Aiven MySQL Username |
+| `MYSQL_PASSWORD` | `<AIVEN_MYSQL_PASSWORD>` | Aiven MySQL Password |
+| `MYSQL_DATABASE` | `neoserve_db` | Aiven MySQL Target Database |
+| `MYSQL_SSL_MODE` | `REQUIRED` | Mandatory SSL |
+| `REMOTE_API_BASE_URL`| `https://rms-monster-api.onrender.com` | Python REST API backend |
 
-If you prefer a different host (Railway, Fly, VPS, DigitalOcean App Platform), I can generate equivalent config (Dockerfile is already present and portable).
+---
+
+## 2. Quick Render Deployment Steps
+
+1. Push this folder to your GitHub repository (e.g. `https://github.com/Umangprasad3970/neoserve-website`).
+2. Log into [Render Dashboard](https://dashboard.render.com).
+3. Click **New +** &rarr; **Web Service**.
+4. Select your `neoserve-website` repository:
+   - **Environment:** `Node`
+   - **Branch:** `main`
+   - **Build Command:** `npm install`
+   - **Start Command:** `npm start`
+5. Under **Environment Variables**, paste the variables from the table above.
+6. Click **Create Web Service**.
+7. Once deployed, attach your custom domain `rms.monster` or `www.neoservepro.com` in Render's Custom Domains tab.
+
+---
+
+## 3. Shared Database Architecture
+
+Both the **Website** and the **Android Mobile App** read and write to the same live Aiven Cloud MySQL database (`neoserve_db`):
+- `leads`: All contact inquiries with automated lead scoring and UUID idempotency keys.
+- `contacts`: Verified point-of-contact address book.
+- `consultations`: Technical site audits and grid radiation feasibility bookings (`AUD-...`).
+- `quotes`: Commercial Turnkey EPC quotation proposals (`RFQ-...`).
+- `services`: The 5 core clean energy disciplines from the brochure.
+- `projects`: The 6 hallmark brochure projects across Gujarat, Rajasthan, and Tamil Nadu.
+- `tasks`: Automated 24-hr SLA follow-up tasks for every new lead.

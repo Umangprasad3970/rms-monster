@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Leads Admin | Neoserve Projects</title>
+<title>Enterprise Portal | Neoserve Projects</title>
 <meta name="robots" content="noindex, nofollow">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 40 40%22><rect x=%221%22 y=%221%22 width=%2238%22 height=%2238%22 rx=%222%22 transform=%22rotate(45 20 20)%22 fill=%22%230B1210%22/><circle cx=%2220%22 cy=%2220%22 r=%223%22 fill=%22%23159A57%22/></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -11,8 +11,26 @@
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/css/style.css">
 <style>
-  .admin-wrap{ max-width:1100px; margin:0 auto; padding:56px 28px; }
-  .key-card{ max-width:420px; margin:80px auto; }
+  .admin-wrap{ max-width:1180px; margin:0 auto; padding:56px 28px; }
+  .key-card{ max-width:440px; margin:80px auto; }
+  .admin-tabs{ display:flex; gap:8px; border-bottom:1px solid var(--line); margin-top:24px; padding-bottom:12px; }
+  .admin-tab-btn{
+    font-family:var(--font-mono); font-size:12.5px; padding:8px 16px;
+    border:1px solid var(--line); background:var(--white); color:var(--slate);
+    cursor:pointer;
+  }
+  .admin-tab-btn.active{
+    background:var(--ink); color:var(--white); border-color:var(--ink);
+  }
+  .admin-kpis{ display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin:24px 0; }
+  @media (max-width:800px){ .admin-kpis{ grid-template-columns:1fr 1fr; } }
+  .admin-kpi-card{ background:var(--white); border:1px solid var(--line); padding:16px 20px; }
+  .admin-kpi-card .val{ font-size:24px; font-weight:700; color:var(--green-deep); font-family:var(--font-display); }
+  .admin-kpi-card .lbl{ font-size:11px; font-family:var(--font-mono); text-transform:uppercase; color:var(--slate-soft); margin-top:4px; }
+  .status-badge{ display:inline-block; font-size:11px; font-family:var(--font-mono); padding:3px 8px; border-radius:2px; text-transform:uppercase; }
+  .badge-NEW{ background:#E0F2FE; color:#0369A1; }
+  .badge-CONFIRMED, .badge-ACCEPTED{ background:#DCFCE7; color:#15803D; }
+  .badge-SUBMITTED, .badge-PENDING{ background:#FEF3C7; color:#B45309; }
 </style>
 </head>
 <body class="blueprint">
@@ -20,43 +38,136 @@
 <div id="site-header"></div>
 
 <main>
+  <!-- Gate Screen -->
   <div id="gate" class="key-card form-card">
-    <span class="eyebrow">Restricted</span>
-    <h2 class="mt-16" style="font-size:22px;">Enter admin key</h2>
-    <p class="muted mt-16" style="font-size:13.5px;">This key is set as the <code>ADMIN_KEY</code> environment variable on the server. It is required to view submitted project leads.</p>
+    <span class="eyebrow">Enterprise Access</span>
+    <h2 class="mt-16" style="font-size:22px;">Enter Admin Key</h2>
+    <p class="muted mt-16" style="font-size:13.5px;">Direct query access to live <strong>Aiven Cloud MySQL (<code>neoserve_db</code>)</strong> leads, RFQs, site audit bookings, and SLA tasks.</p>
     <div class="field mt-24">
-      <label for="adminKey">Admin key</label>
-      <input type="password" id="adminKey" autocomplete="off">
+      <label for="adminKey">Admin Key</label>
+      <input type="password" id="adminKey" value="NeoserveAdmin2026SecureKey" autocomplete="off">
     </div>
-    <button class="btn btn-primary" id="loadBtn">View leads <span class="btn-arrow">&rarr;</span></button>
+    <button class="btn btn-primary" id="loadBtn" style="margin-top:16px;">Access Database &rarr;</button>
     <div id="gateMsg" class="form-msg"></div>
   </div>
 
+  <!-- Authenticated Results -->
   <div id="results" class="admin-wrap" style="display:none;">
     <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px;">
       <div>
-        <span class="eyebrow">Project Leads</span>
-        <h1 class="mt-16" style="font-size:28px;">Contact form submissions</h1>
+        <span class="eyebrow">Live Enterprise Database</span>
+        <h1 class="mt-16" style="font-size:28px;">Aiven MySQL Operations Portal</h1>
+        <p class="muted mt-8" style="font-size:13.5px;">Target: <code>neoserve_db</code> &middot; Server: <code>rms-db-umangprasad3970-a391.g.aivencloud.com:10469</code></p>
       </div>
-      <button class="btn btn-outline" id="refreshBtn">Refresh</button>
+      <div style="display:flex;gap:10px;">
+        <a href="/api/v1/brochure/download" class="btn btn-outline" download>Download Brochure</a>
+        <button class="btn btn-primary" id="refreshBtn">&#8635; Refresh Data</button>
+      </div>
     </div>
-    <div style="overflow-x:auto; margin-top:32px; border:1px solid var(--line);">
+
+    <!-- Quick Stats -->
+    <div class="admin-kpis">
+      <div class="admin-kpi-card">
+        <div class="val" id="countLeads">0</div>
+        <div class="lbl">Total Leads</div>
+      </div>
+      <div class="admin-kpi-card">
+        <div class="val" id="countQuotes">0</div>
+        <div class="lbl">Commercial RFQs</div>
+      </div>
+      <div class="admin-kpi-card">
+        <div class="val" id="countAudits">0</div>
+        <div class="lbl">Site Audits</div>
+      </div>
+      <div class="admin-kpi-card">
+        <div class="val" id="countTasks">0</div>
+        <div class="lbl">24h SLA Tasks</div>
+      </div>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <div class="admin-tabs">
+      <button class="admin-tab-btn active" data-view="leads">📋 Project Leads</button>
+      <button class="admin-tab-btn" data-view="quotes">💼 Commercial RFQs</button>
+      <button class="admin-tab-btn" data-view="consultations">📅 Site Audits</button>
+      <button class="admin-tab-btn" data-view="tasks">⚡ 24h SLA Tasks</button>
+    </div>
+
+    <!-- View 1: Leads -->
+    <div id="view-leads" class="admin-view" style="overflow-x:auto; margin-top:20px; border:1px solid var(--line); background:var(--white);">
       <table class="admin-table">
         <thead>
           <tr>
-            <th>Received</th>
-            <th>Name</th>
+            <th>Status</th>
+            <th>ID / Received</th>
+            <th>Client Name</th>
             <th>Contact</th>
             <th>Company</th>
-            <th>Service</th>
+            <th>Project Discipline</th>
             <th>Location</th>
-            <th>Message</th>
+            <th>Enquiry Details</th>
           </tr>
         </thead>
         <tbody id="leadsBody"></tbody>
       </table>
     </div>
-    <p class="muted mt-24" id="emptyState" style="display:none;">No submissions yet.</p>
+
+    <!-- View 2: Quotes -->
+    <div id="view-quotes" class="admin-view" style="display:none; overflow-x:auto; margin-top:20px; border:1px solid var(--line); background:var(--white);">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>Status</th>
+            <th>RFQ Number</th>
+            <th>Company</th>
+            <th>Contact Person</th>
+            <th>Contact Details</th>
+            <th>Service Type</th>
+            <th>Capacity</th>
+            <th>Created</th>
+          </tr>
+        </thead>
+        <tbody id="quotesBody"></tbody>
+      </table>
+    </div>
+
+    <!-- View 3: Consultations -->
+    <div id="view-consultations" class="admin-view" style="display:none; overflow-x:auto; margin-top:20px; border:1px solid var(--line); background:var(--white);">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>Status</th>
+            <th>Booking Ref</th>
+            <th>Name</th>
+            <th>Organization</th>
+            <th>Contact</th>
+            <th>Preferred Date</th>
+            <th>Audit Topic</th>
+            <th>Location</th>
+          </tr>
+        </thead>
+        <tbody id="consultationsBody"></tbody>
+      </table>
+    </div>
+
+    <!-- View 4: Tasks -->
+    <div id="view-tasks" class="admin-view" style="display:none; overflow-x:auto; margin-top:20px; border:1px solid var(--line); background:var(--white);">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>Priority</th>
+            <th>Status</th>
+            <th>Task Title</th>
+            <th>Associated Entity</th>
+            <th>Due Date</th>
+            <th>Created At</th>
+          </tr>
+        </thead>
+        <tbody id="tasksBody"></tbody>
+      </table>
+    </div>
+
+    <p class="muted mt-24" id="emptyState" style="display:none;">No records found in this view.</p>
   </div>
 </main>
 
