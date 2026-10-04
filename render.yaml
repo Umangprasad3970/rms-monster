@@ -5,7 +5,19 @@ services:
     branch: main
     buildCommand: "npm install"
     startCommand: "npm start"
-    plan: starter
+    plan: free
     envVars:
+      - key: MYSQL_HOST
+        value: rms-db-umangprasad3970-a391.g.aivencloud.com
+      - key: MYSQL_PORT
+        value: "10469"
+      - key: MYSQL_USER
+        value: avnadmin
+      - key: MYSQL_DATABASE
+        value: neoserve_db
+      - key: MYSQL_SSL_MODE
+        value: REQUIRED
+      - key: REMOTE_API_BASE_URL
+        value: https://rms-monster-api.onrender.com
       - key: ADMIN_KEY
-        value: "" # set this in Render dashboard to enable /api/leads
+        value: NeoserveAdmin2026SecureKey
