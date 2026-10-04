@@ -65,12 +65,17 @@
         return;
       }
 
+      // Normalize phone number (handle spaces, dashes, +91 country code)
+      const digitsOnly = phone.replace(/[^0-9]/g, '');
+      const normalizedPhone = (digitsOnly.length >= 10) ? digitsOnly.slice(-10) : (digitsOnly || phone);
+
       const payload = {
         fullName: fullName,
         name: fullName,
         full_name: fullName,
         email: email,
-        phone: phone,
+        phone: normalizedPhone,
+        rawPhone: phone,
         company: company,
         projectType: projectType,
         project_type: projectType,

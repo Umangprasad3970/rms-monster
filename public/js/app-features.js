@@ -496,11 +496,16 @@
         const msgEl = document.getElementById('auditMsg');
         const submitBtn = auditForm.querySelector('button[type="submit"]');
 
+        const rawPhone = auditForm.auditPhone.value.trim();
+        const digitsOnly = rawPhone.replace(/[^0-9]/g, '');
+        const normPhone = (digitsOnly.length >= 10) ? digitsOnly.slice(-10) : (digitsOnly || rawPhone);
+
         const payload = {
           name: auditForm.auditName.value.trim(),
           organization: auditForm.auditOrg.value.trim(),
           email: auditForm.auditEmail.value.trim(),
-          phone: auditForm.auditPhone.value.trim(),
+          phone: normPhone,
+          raw_phone: rawPhone,
           preferred_date: auditForm.auditDate.value,
           topic: auditForm.auditTopic.value.trim(),
           location: auditForm.auditLocation.value.trim()
@@ -574,11 +579,16 @@
         const msgEl = document.getElementById('rfqMsg');
         const submitBtn = rfqForm.querySelector('button[type="submit"]');
 
+        const rawPhone = rfqForm.rfqPhone.value.trim();
+        const digitsOnly = rawPhone.replace(/[^0-9]/g, '');
+        const normPhone = (digitsOnly.length >= 10) ? digitsOnly.slice(-10) : (digitsOnly || rawPhone);
+
         const payload = {
           company_name: rfqForm.rfqCompany.value.trim(),
           contact_person: rfqForm.rfqName.value.trim(),
           email: rfqForm.rfqEmail.value.trim(),
-          phone: rfqForm.rfqPhone.value.trim(),
+          phone: normPhone,
+          raw_phone: rawPhone,
           service_type: rfqForm.rfqService.value,
           capacity_mw: rfqForm.rfqCapacity.value.trim(),
           location: rfqForm.rfqLocation.value.trim(),
