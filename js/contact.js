@@ -147,7 +147,7 @@
       }
 
       if (!submitted) {
-        showMsg(msg, 'Could not connect to server. Please call Dinesh Ahirwar directly at +91 63756 96762.', 'err');
+        showMsg(msg, 'Could not connect to server. Please call Ujjwal Prasad directly at +91 82109 67599.', 'err');
       }
 
       setLoading(btn, false);

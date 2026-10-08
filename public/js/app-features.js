@@ -562,7 +562,7 @@
         }
 
         if (!success) {
-          msgEl.textContent = 'Could not schedule. Please call Dinesh Ahirwar directly at +91 63756 96762.';
+          msgEl.textContent = 'Could not schedule. Please call Ujjwal Prasad directly at +91 82109 67599.';
           msgEl.className = 'form-msg show err';
         }
 
@@ -646,7 +646,7 @@
         }
 
         if (!success) {
-          msgEl.textContent = 'Could not submit proposal request. Please call +91 63756 96762 directly.';
+          msgEl.textContent = 'Could not submit proposal request. Please call +91 82109 67599 directly.';
           msgEl.className = 'form-msg show err';
         }
 

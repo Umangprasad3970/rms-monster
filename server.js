@@ -19,6 +19,13 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const url = require('url');
+const crypto = require('crypto');
+
+// Unique Shared Enterprise Encryption Key Configuration (Shared across Android App, Web & Flask Backend)
+const API_ENCRYPTION_KEY_RAW = process.env.API_ENCRYPTION_KEY || 'Neoserve_2026_Enterprise_Unique_AES256_Encryption_Key!';
+const API_KEY_ID = process.env.API_KEY_ID || 'neoserve-enterprise-2026';
+const AES_KEY = crypto.createHash('sha256').update(API_ENCRYPTION_KEY_RAW, 'utf8').digest(); // 32 bytes (256-bit)
+const KEY_FINGERPRINT = AES_KEY.slice(0, 8).toString('hex'); // 6ae891073ab329ea
 
 const {
   pool,
@@ -67,16 +74,79 @@ function isRateLimited(ip) {
   return timestamps.length > RATE_LIMIT_MAX;
 }
 
+function encryptPayload(plainObjOrStr) {
+  const plainText = typeof plainObjOrStr === 'string' ? plainObjOrStr : JSON.stringify(plainObjOrStr);
+  const iv = crypto.randomBytes(16);
+  const cipher = crypto.createCipheriv('aes-256-cbc', AES_KEY, iv);
+  let encrypted = cipher.update(plainText, 'utf8', 'base64');
+  encrypted += cipher.final('base64');
+
+  return {
+    encrypted: true,
+    algorithm: 'AES-256-CBC',
+    keyId: API_KEY_ID,
+    iv: iv.toString('base64'),
+    data: encrypted
+  };
+}
+
+function decryptPayload(envelope) {
+  if (!envelope || typeof envelope !== 'object' || !envelope.encrypted || !envelope.iv || !envelope.data) {
+    return envelope;
+  }
+  try {
+    const iv = Buffer.from(envelope.iv, 'base64');
+    const decipher = crypto.createDecipheriv('aes-256-cbc', AES_KEY, iv);
+    let decrypted = decipher.update(envelope.data, 'base64', 'utf8');
+    decrypted += decipher.final('utf8');
+    try {
+      return JSON.parse(decrypted);
+    } catch {
+      return decrypted;
+    }
+  } catch (err) {
+    console.error('[Decryption Error]', err.message);
+    return envelope;
+  }
+}
+
 function sendJson(res, status, obj) {
-  const body = JSON.stringify(obj);
-  res.writeHead(status, {
+  const req = res._req;
+  const wantsEncryption = req && (
+    req.headers['x-client-encryption'] === 'true' ||
+    req.headers['x-payload-encrypted'] === 'true'
+  );
+
+  let finalObj = obj;
+  const headers = {
     'Content-Type': 'application/json; charset=utf-8',
-    'Content-Length': Buffer.byteLength(body),
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization, Idempotency-Key, X-Admin-Key, X-Request-Id'
-  });
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, Idempotency-Key, X-Admin-Key, X-Request-Id, X-Payload-Encrypted, X-Client-Encryption, X-Encryption-Key-Id, X-Encryption-Key-Fingerprint',
+    'Access-Control-Expose-Headers': 'X-Payload-Encrypted, X-Encryption-Key-Id, X-Encryption-Key-Fingerprint'
+  };
+
+  if (wantsEncryption && status >= 200 && status < 300) {
+    finalObj = encryptPayload(obj);
+    headers['X-Payload-Encrypted'] = 'true';
+    headers['X-Encryption-Key-Id'] = API_KEY_ID;
+    headers['X-Encryption-Key-Fingerprint'] = KEY_FINGERPRINT;
+  }
+
+  const body = JSON.stringify(finalObj);
+  headers['Content-Length'] = Buffer.byteLength(body);
+  res.writeHead(status, headers);
   res.end(body);
+}
+
+async function parseJsonBody(req) {
+  const raw = await readBody(req);
+  if (!raw || !raw.trim()) return {};
+  let parsed = JSON.parse(raw);
+  if (parsed && typeof parsed === 'object' && parsed.encrypted && parsed.iv && parsed.data) {
+    parsed = decryptPayload(parsed);
+  }
+  return parsed;
 }
 
 function readBody(req, limitBytes = 2e6) {
@@ -153,8 +223,7 @@ function serve404(res) {
 async function handleLeadSubmission(req, res) {
   let payload;
   try {
-    const raw = await readBody(req);
-    payload = JSON.parse(raw || '{}');
+    payload = await parseJsonBody(req);
   } catch (err) {
     return sendJson(res, 400, { success: false, error: 'Invalid JSON request body.' });
   }
@@ -166,7 +235,7 @@ async function handleLeadSubmission(req, res) {
 
   const ip = getClientIp(req);
   if (isRateLimited(ip)) {
-    return sendJson(res, 429, { success: false, error: 'Too many requests. Please try again shortly or contact +91 63756 96762.' });
+    return sendJson(res, 429, { success: false, error: 'Too many requests. Please try again shortly or contact +91 82109 67599.' });
   }
 
   const errors = validateLeadPayload(payload);
@@ -208,8 +277,7 @@ async function handleLeadSubmission(req, res) {
 async function handleCheckDuplicate(req, res) {
   let payload;
   try {
-    const raw = await readBody(req);
-    payload = JSON.parse(raw || '{}');
+    payload = await parseJsonBody(req);
   } catch (err) {
     return sendJson(res, 400, { success: false, error: 'Invalid JSON request body.' });
   }
@@ -312,8 +380,7 @@ function calculateYieldRoi(payload) {
 async function handleCalculator(req, res) {
   let payload;
   try {
-    const raw = await readBody(req);
-    payload = JSON.parse(raw || '{}');
+    payload = await parseJsonBody(req);
   } catch (err) {
     return sendJson(res, 400, { success: false, error: 'Invalid JSON request body.' });
   }
@@ -383,8 +450,7 @@ function getTelemetryOverview() {
 async function handleConsultationSchedule(req, res) {
   let payload;
   try {
-    const raw = await readBody(req);
-    payload = JSON.parse(raw || '{}');
+    payload = await parseJsonBody(req);
   } catch (err) {
     return sendJson(res, 400, { success: false, error: 'Invalid JSON request body.' });
   }
@@ -405,8 +471,7 @@ async function handleConsultationSchedule(req, res) {
 async function handleQuoteSubmission(req, res) {
   let payload;
   try {
-    const raw = await readBody(req);
-    payload = JSON.parse(raw || '{}');
+    payload = await parseJsonBody(req);
   } catch (err) {
     return sendJson(res, 400, { success: false, error: 'Invalid JSON request body.' });
   }
@@ -487,6 +552,7 @@ async function handleAdminOverview(req, res, parsedUrl) {
 // HTTP Server
 // ---------------------------------------------------------------------------
 const server = http.createServer(async (req, res) => {
+  res._req = req;
   const parsedUrl = url.parse(req.url, true);
   const urlPath = parsedUrl.pathname;
 
@@ -495,7 +561,8 @@ const server = http.createServer(async (req, res) => {
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, Idempotency-Key, X-Admin-Key, X-Request-Id');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, Idempotency-Key, X-Admin-Key, X-Request-Id, X-Payload-Encrypted, X-Client-Encryption, X-Encryption-Key-Id, X-Encryption-Key-Fingerprint');
+  res.setHeader('Access-Control-Expose-Headers', 'X-Payload-Encrypted, X-Encryption-Key-Id, X-Encryption-Key-Fingerprint');
 
   if (req.method === 'OPTIONS') {
     res.writeHead(204);
@@ -504,6 +571,39 @@ const server = http.createServer(async (req, res) => {
   }
 
   try {
+    // 0. Security & Encryption Status Endpoints
+    if (req.method === 'GET' && (urlPath === '/api/v1/security/status' || urlPath === '/api/security/status')) {
+      return sendJson(res, 200, {
+        success: true,
+        encryptionEnabled: true,
+        algorithm: 'AES-256-CBC',
+        keyId: API_KEY_ID,
+        keyFingerprint: KEY_FINGERPRINT,
+        headerRequired: 'X-Payload-Encrypted',
+        clientEncryptionHeader: 'X-Client-Encryption',
+        description: 'Enterprise end-to-end payload encryption using AES-256-CBC with PKCS7 padding.',
+        status: 'OPERATIONAL'
+      });
+    }
+
+    if (req.method === 'POST' && urlPath === '/api/v1/security/encrypt') {
+      const payload = await parseJsonBody(req);
+      return sendJson(res, 200, {
+        success: true,
+        encryptedPayload: encryptPayload(payload.payload || payload)
+      });
+    }
+
+    if (req.method === 'POST' && urlPath === '/api/v1/security/decrypt') {
+      const raw = await readBody(req);
+      const envelope = JSON.parse(raw || '{}');
+      const target = envelope.encryptedPayload || envelope;
+      const decrypted = decryptPayload(target);
+      return sendJson(res, 200, {
+        success: true,
+        decryptedData: decrypted
+      });
+    }
     // 1. Leads
     if (req.method === 'POST' && (urlPath === '/api/v1/leads' || urlPath === '/api/contact')) {
       return await handleLeadSubmission(req, res);

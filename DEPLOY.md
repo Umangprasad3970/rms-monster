@@ -35,7 +35,7 @@ When setting up your Web Service on Render (or Railway / VPS), configure these e
    - **Start Command:** `npm start`
 5. Under **Environment Variables**, paste the variables from the table above.
 6. Click **Create Web Service**.
-7. Once deployed, attach your custom domain `rms.monster` or `www.neoservepro.com` in Render's Custom Domains tab.
+7. Once deployed, attach your custom domain `rms.monster` in Render's Custom Domains tab.
 
 ---
 
